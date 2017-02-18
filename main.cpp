@@ -47,15 +47,21 @@ int main()
     featureExtractor.createFeatureTrainingSet(readerMNIST, true);
     std::cout << "Training feature extraction done. Reading testing data" << std::endl;
     //outputFeatures.close();
-    ifstream inputTestImage("TestingData/t10k-images.idx3-ubyte", ifstream::in);
-    ifstream inputTestLabel("TestingData/t10k-labels.idx1-ubyte", ifstream::in);
-    ImageReader* readerMNISTTesting = aMNISTFactory->createReader();
-    readerMNISTTesting->readData(inputTestImage, inputTestLabel);
+    //ifstream inputTestImage("TestingData/t10k-images.idx3-ubyte", ifstream::in);
+    //ifstream inputTestLabel("TestingData/t10k-labels.idx1-ubyte", ifstream::in);
+    //ImageReader* readerMNISTTesting = aMNISTFactory->createReader();
+    ifstream inputTestUCI("TestingData/optdigits-orig.windep", ifstream::in);
+    ImageReader* readerUCITesting = aUCIFactory->createReader();
+    //readerMNISTTesting->readData(inputTestImage, inputTestLabel);
+    readerUCITesting->readData(inputTestUCI, dummy);
     MachineLearning ml(featureExtractor);
-    ml.recognise(readerMNISTTesting);
+    //ml.recognise(readerMNISTTesting);
+    ml.recognise(readerUCITesting);
     int nCorrect = 0;
-    int nTests = readerMNISTTesting->getImages().size();
-    vector<int> referenceResults = readerMNISTTesting->getLabels();
+    //int nTests = readerMNISTTesting->getImages().size();
+    int nTests = readerUCITesting->getImages().size();
+    //vector<int> referenceResults = readerMNISTTesting->getLabels();
+    vector<int> referenceResults = readerUCITesting->getLabels();
     for(int i=0; i < nTests; ++i){
     //    std::cout << ml.getResults()[i] << "  " << referenceResults[i] << std::endl;
         if (ml.getResults()[i] == referenceResults[i]) ++nCorrect;
