@@ -1,10 +1,42 @@
 #include "MachineLearning.hpp"
-MachineLearning::MachineLearning(FeatureExtractor ft){
-    featureExtractor = ft;
+#include <thread>
+void MachineLearning::addTrainingData(ImageReader* input){
+    size_t previousSize = featureExtractor.getFeatureTrainingSet().size();
+    size_t inputNImages = input->getImages().size();
+    featureExtractor.getFeatureTrainingSet().resize(previousSize + inputNImages);
+    featureExtractor.getLabelTrainingSet().resize(previousSize + inputNImages);
+    vector<thread> workerThreads;
+    int first, last;
+    int nImagesForAThread = input->getImages().size()/NTHREADS;
+    for (int i=0; i < NTHREADS; ++i){
+        first = nImagesForAThread * i;
+        if (i < NTHREADS-1) last = first + nImagesForAThread - 1;
+        else last = inputNImages - 1;
+        workerThreads.push_back(thread(&FeatureExtractor::createFeatureTrainingSet, &featureExtractor, input, true, first, last, previousSize));
+    }
+    for (int i=0; i < NTHREADS; ++i){
+        workerThreads[i].join();
+    }
 }
-void MachineLearning::recognise(ImageReader* reader){
-    std::cout << "Extracting tests features" << std::endl;
-    featureExtractor.createFeatureTrainingSet(reader, false);
+void MachineLearning::addTestingData(ImageReader* input){
+    size_t previousSize = featureExtractor.getFeatureTestingSet().size();
+    size_t inputNImages = input->getImages().size();
+    featureExtractor.getFeatureTestingSet().resize(previousSize + inputNImages);
+    featureExtractor.getLabelTestingSet().resize(previousSize + inputNImages);
+    vector<thread> workerThreads;
+    int first, last;
+    int nImagesForAThread = input->getImages().size()/NTHREADS;
+    for (int i=0; i < NTHREADS; ++i){
+        first = nImagesForAThread * i;
+        if (i < NTHREADS-1) last = first + nImagesForAThread - 1;
+        else last = inputNImages - 1;
+        workerThreads.push_back(thread(&FeatureExtractor::createFeatureTrainingSet, &featureExtractor, input, false, first, last, previousSize));
+    }
+    for (int i=0; i < NTHREADS; ++i){
+        workerThreads[i].join();
+    }
+}
+void MachineLearning::recognise(){
     vector<vector<int>> trainingFeatures = featureExtractor.getFeatureTrainingSet();
     vector<int> trainingLabels = featureExtractor.getLabelTrainingSet();
     vector<vector<int>> testingFeature = featureExtractor.getFeatureTestingSet();
@@ -32,6 +64,12 @@ void MachineLearning::recognise(ImageReader* reader){
     }
     std::cout << "Recognition done. Returning..." << std::endl;
 }
-vector<int>& MachineLearning::getResults(){
-    return results;
+void MachineLearning::selfValidate(){
+    vector<int> referenceResults = featureExtractor.getLabelTestingSet();
+    int nTests = referenceResults.size();
+    int nCorrect = 0;
+    for(int i=0; i < nTests; ++i){
+        if (results[i] == referenceResults[i]) ++nCorrect;
+    }
+    cout << "Accuracy:" << (double)nCorrect/nTests * 100 <<"%" << endl;
 }

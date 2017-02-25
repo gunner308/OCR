@@ -8,10 +8,12 @@ using namespace mlpack::metric; // ManhattanDistance
 using namespace mlpack::util;
 class MachineLearning{
     private:
-        vector<int> results;
         FeatureExtractor featureExtractor;
+        vector<int> results;
+        const int NTHREADS = 8;
     public:
-        MachineLearning(FeatureExtractor ft);
-        void recognise(ImageReader* inputTest);
-        vector<int>& getResults();
+        void addTrainingData(ImageReader* input);
+        void addTestingData(ImageReader* input);
+        void recognise();
+        void selfValidate();
 };

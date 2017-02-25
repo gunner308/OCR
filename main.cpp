@@ -2,35 +2,100 @@
 #include "UCIReaderFactory.hpp"
 #include "FeatureExtractor.hpp"
 #include "MachineLearning.hpp"
+
+void trainingModeHandler(MachineLearning& ml){
+    vector<string> uciFilenames;
+    vector<pair<string, string>> mnistFilenames;
+    string trainDirectory = "TrainingData/";
+    while(true){
+        int dataFormat = -1;
+        cout << "Data format: 1. UCI  2. MNIST  0. Start training" << endl;
+        cin >> dataFormat;
+        if (dataFormat == 0) break;
+        else if (dataFormat == 1){
+            string temp;
+            cout << "Filename: ";
+            cin >> temp;
+            uciFilenames.push_back(trainDirectory+temp);
+        }
+        else if (dataFormat == 2){
+            string temp1, temp2;
+            cout << "Image filename: ";
+            cin >> temp1;
+            cout << "Label filename: ";
+            cin >> temp2;
+            mnistFilenames.push_back(pair<string, string>(trainDirectory+temp1, trainDirectory+temp2));
+        }
+    }
+    for(string s: uciFilenames){
+        ImageReaderFactory* aUCIFactory = new UCIReaderFactory();
+        ImageReader* readerUCI = aUCIFactory->createReader();
+        ifstream inputUCI (s, ifstream::in);
+        ifstream dummy;
+        readerUCI->readData(inputUCI, dummy);
+        ml.addTrainingData(readerUCI);
+    }
+    for(auto p: mnistFilenames){
+        ImageReaderFactory* aMNISTFactory = new MNISTReaderFactory();
+        ImageReader* readerMNIST = aMNISTFactory->createReader();
+        ifstream inputMNISTImages (p.first, ifstream::binary);
+        ifstream inputMNISTLabels (p.second, ifstream::binary);
+        readerMNIST->readData(inputMNISTImages, inputMNISTLabels);
+        ml.addTrainingData(readerMNIST);
+    }
+}
+void validationModeHandler(MachineLearning& ml){
+    vector<string> uciFilenames;
+    vector<pair<string, string>> mnistFilenames;
+    string testDirectory = "TestingData/";
+    while(true){
+        int dataFormat = -1;
+        cout << "Data format: 1. UCI  2. MNIST  0. Start validating" << endl;
+        cin >> dataFormat;
+        if (dataFormat == 0) break;
+        else if (dataFormat == 1){
+            string temp;
+            cout << "Filename: ";
+            cin >> temp;
+            uciFilenames.push_back(testDirectory+temp);
+        }
+        else if (dataFormat == 2){
+            string temp1, temp2;
+            cout << "Image filename: ";
+            cin >> temp1;
+            cout << "Label filename: ";
+            cin >> temp2;
+            mnistFilenames.push_back(make_pair(testDirectory+temp1, testDirectory+temp2));
+        }
+    }
+    for(string s: uciFilenames){
+        ImageReaderFactory* aUCIFactory = new UCIReaderFactory();
+        ImageReader* readerUCI = aUCIFactory->createReader();
+        ifstream inputUCI (s, ifstream::in);
+        ifstream dummy;
+        readerUCI->readData(inputUCI, dummy);
+        ml.addTestingData(readerUCI);
+    }
+    for(auto p: mnistFilenames){
+        ImageReaderFactory* aMNISTFactory = new MNISTReaderFactory();
+        ImageReader* readerMNIST = aMNISTFactory->createReader();
+        ifstream inputMNISTImgs(p.first, ifstream::binary);
+        ifstream inputMNISTLabls(p.second, ifstream::binary);
+        readerMNIST->readData(inputMNISTImgs, inputMNISTLabls);
+        ml.addTestingData(readerMNIST);
+    }
+    ml.recognise();
+    ml.selfValidate();
+}
 int main()
 {
-    // Load the data from data.csv (hard-coded).  Use CLI for simple command-line
-    // parameter handling.
-    /*
-    arma::mat data;
-    data::Load("data.csv", data, true);
-    // Use templates to specify that we want a NeighborSearch object which uses
-    // the Manhattan distance.
-    NeighborSearch<NearestNeighborSort, ManhattanDistance> nn(data);
-    // Create the object we will store the nearest neighbors in.
-    arma::Mat<size_t> neighbors;
-    arma::mat distances; // We need to store the distance too.
-    // Compute the neighbors.
-    nn.Search(1, neighbors, distances);
-    // Write each neighbor and distance using Log.
-    for (size_t i = 0; i < neighbors.n_elem; ++i)
-    {
-    Log::Info << "Nearest neighbor of point " << i << " is point "
-        << neighbors[i] << " and the distance is " << distances[i] << ".\n";
-    }
-    */
-    ImageReaderFactory* aMNISTFactory = new MNISTReaderFactory();
+    /*ImageReaderFactory* aMNISTFactory = new MNISTReaderFactory();
     ImageReaderFactory* aUCIFactory = new UCIReaderFactory();
     ImageReader* readerMNIST = aMNISTFactory->createReader();
     ImageReader* readerUCI = aUCIFactory->createReader();
     ifstream inputUCI ("TrainingData/optdigits-orig.tra", ifstream::in);
-    ifstream inputMNISTImgs("TrainingData/train-images.idx3-ubyte", ifstream::in);
-    ifstream inputMNISTLabls("TrainingData/train-labels.idx1-ubyte", ifstream::in);
+    ifstream inputMNISTImgs("TrainingData/train-images.idx3-ubyte", ifstream::binary);
+    ifstream inputMNISTLabls("TrainingData/train-labels.idx1-ubyte", ifstream::binary;
     ifstream dummy;
     readerUCI->readData(inputUCI, dummy);
     readerMNIST->readData(inputMNISTImgs, inputMNISTLabls);
@@ -63,9 +128,26 @@ int main()
     //vector<int> referenceResults = readerMNISTTesting->getLabels();
     vector<int> referenceResults = readerUCITesting->getLabels();
     for(int i=0; i < nTests; ++i){
-    //    std::cout << ml.getResults()[i] << "  " << referenceResults[i] << std::endl;
         if (ml.getResults()[i] == referenceResults[i]) ++nCorrect;
     }
     cout << "Accuracy:" << (double)nCorrect/nTests * 100 <<"%" << endl;
+    return 0;*/
+    MachineLearning ml;
+    while(true){
+        int mode;
+        cout << "1. Training mode    2. Validation mode    3. Exit" << endl;
+        cout << "Please choose mode: ";
+        cin >> mode;
+        switch(mode){
+            case 1:
+                trainingModeHandler(ml);
+                break;
+            case 2:
+                validationModeHandler(ml);
+                break;
+            case 3:
+                return 0;
+        }
+    }
     return 0;
 }

@@ -1,49 +1,30 @@
 #include "FeatureExtractor.hpp"
 #include <iostream>
 using namespace std;
-FeatureExtractor::FeatureExtractor(){
-}
-void FeatureExtractor::createFeatureTrainingSet(ImageReader* reader, bool isTraining){
+
+void FeatureExtractor::createFeatureTrainingSet(ImageReader* reader, bool isTraining, int first, int last, size_t previousSize){
     vector<vector<vector<int>>> images = reader->getImages();
     vector<int> labels = reader->getLabels();
-    size_t oldSizeTrainingFeature = featureTrainingSet.size();
-    size_t oldSizeTestingFeature = featureTestingSet.size();
-    int nImages = images.size();
-    if (isTraining){
-        featureTrainingSet.resize(oldSizeTrainingFeature + nImages);
-    }
-    else featureTestingSet.resize(oldSizeTestingFeature + nImages);
-    for (int i=0; i < nImages; ++i){
-        if (scaledImage.size()){
-            scaledImage.clear();
-        }
-        if (firstImage.size()){
-            firstImage.clear();
-        }
+    vector<vector<int>> scaledImage;
+    vector<vector<int>> firstImage;
+    for (int i=first; i <= last; ++i){
         firstImage = images[i];
-        scaleImageToStandard(images[i]);
-        vector<int> nOnes = countOnes();
+        scaleImageToStandard(images[i], scaledImage);
+        vector<int> nOnes = countOnes(scaledImage);
         for (unsigned int j=0; j < nOnes.size(); ++j){
-            if(isTraining) featureTrainingSet[oldSizeTrainingFeature + i].push_back(nOnes[j]);
-            else featureTestingSet[oldSizeTestingFeature + i].push_back(nOnes[j]);
+            if(isTraining) featureTrainingSet[previousSize + i].push_back(nOnes[j]);
+            else featureTestingSet[previousSize + i].push_back(nOnes[j]);
         }
-        padImage();
+        padImage(firstImage);
         //thinImage();
-        /*if (i==8 || i == 9 || i == 7){
-            for (unsigned int i=0; i < firstImage.size(); ++i){
-                for (unsigned int j=0; j < firstImage.size(); ++j)
-                    cout << (firstImage[i][j]!=0)? 1 : 0;
-                cout << endl;
-            }
-            cout << endl;
-        }*/
-        if(isTraining) featureTrainingSet[oldSizeTrainingFeature + i].push_back(countZeroIslands());
-        else featureTestingSet[oldSizeTestingFeature + i].push_back(countZeroIslands());
-        if (isTraining)
-            labelTrainingSet.push_back(labels[i]);
+        if(isTraining) featureTrainingSet[previousSize + i].push_back(countZeroIslands(firstImage));
+        else featureTestingSet[previousSize + i].push_back(countZeroIslands(firstImage));
+        if (isTraining) labelTrainingSet[previousSize + i] = labels[i];
+        else labelTestingSet[previousSize + i] = labels[i];
     }
 }
-int FeatureExtractor::countZeroIslands(){
+
+int FeatureExtractor::countZeroIslands(vector<vector<int>>& firstImage){
     vector<vector<int>> isChecked;
     size_t imageSize = firstImage.size();
     int nIslands = 0;
@@ -54,14 +35,14 @@ int FeatureExtractor::countZeroIslands(){
 		for (unsigned int j=0; j < imageSize; ++j){
 			if (isChecked[i][j] == 0 && firstImage[i][j] == 0){
 				++nIslands;
-           		findIslands(isChecked, i, j);
+           		findIslands(isChecked, i, j, firstImage);
 			}
 		}
 	}
 	return nIslands;
 }
 
-vector<int> FeatureExtractor::countOnes(){
+vector<int> FeatureExtractor::countOnes(vector<vector<int>>& scaledImage){
     vector<int> nOnes;
     for (int rowUpperLimit = 4; rowUpperLimit <= STANDARD_SIZE; rowUpperLimit += 4){
         for (int colUpperLimit = 4; colUpperLimit <= STANDARD_SIZE; colUpperLimit += 4){
@@ -74,7 +55,7 @@ vector<int> FeatureExtractor::countOnes(){
     }
     return nOnes;
 }
-void FeatureExtractor::scaleImageToStandard(vector<vector<int>>& originalImage){
+void FeatureExtractor::scaleImageToStandard(vector<vector<int>>& originalImage, vector<vector<int>>& scaledImage){
     double scale = (double)STANDARD_SIZE/originalImage.size();
     if (scale == 1){
         scaledImage = originalImage;
@@ -91,46 +72,46 @@ void FeatureExtractor::scaleImageToStandard(vector<vector<int>>& originalImage){
         }
     }
 }
-int FeatureExtractor::findIslands(vector<vector<int>>& isChecked, int i, int j){
+int FeatureExtractor::findIslands(vector<vector<int>>& isChecked, int i, int j, vector<vector<int>>& firstImage){
     size_t imageSize = firstImage.size();
     if (i-1 >= 0 && firstImage[i-1][j] == firstImage[i][j] && isChecked[i-1][j] == 0){
       	isChecked[i-1][j] = 1;
-      	findIslands(isChecked, i-1, j);
+      	findIslands(isChecked, i-1, j, firstImage);
    	}
 
    	if (j+1 < imageSize && firstImage[i][j+1] == firstImage[i][j] && isChecked[i][j+1] == 0){
       	isChecked[i][j+1] = 1;
-      	findIslands(isChecked, i, j+1);
+      	findIslands(isChecked, i, j+1, firstImage);
    	}
 
    	if (i+1 < imageSize && firstImage[i+1][j] == firstImage[i][j] && isChecked[i+1][j] == 0){
     	isChecked[i+1][j] = 1;
-      	findIslands(isChecked, i+1, j);
+      	findIslands(isChecked, i+1, j, firstImage);
    	}
 
    	if (j-1 >= 0 && firstImage[i][j-1] == firstImage[i][j] && isChecked[i][j-1] == 0){
       	isChecked[i][j-1] = 1;
-      	findIslands(isChecked, i, j-1);
+      	findIslands(isChecked, i, j-1, firstImage);
    	}
 
    	if (i-1 >= 0 && j-1 >= 0 && firstImage[i-1][j-1] == firstImage[i][j] && isChecked[i-1][j-1] == 0){
       	isChecked[i-1][j-1] = 1;
-      	findIslands(isChecked, i-1, j-1);
+      	findIslands(isChecked, i-1, j-1, firstImage);
    	}
 
    	if (j+1 < imageSize && i-1 >= 0 && firstImage[i-1][j+1] == firstImage[i][j] && isChecked[i-1][j+1] == 0){
       	isChecked[i-1][j+1] = 1;
-      	findIslands(isChecked, i-1, j+1);
+      	findIslands(isChecked, i-1, j+1, firstImage);
    	}
 
    	if (i+1 < imageSize && j+1 < imageSize && firstImage[i+1][j+1] == firstImage[i][j] && isChecked[i+1][j+1] == 0){
     	isChecked[i+1][j+1] = 1;
-      	findIslands(isChecked, i+1, j+1);
+      	findIslands(isChecked, i+1, j+1, firstImage);
    	}
 
    	if (j-1 >= 0 && i+1 < imageSize && firstImage[i+1][j-1] == firstImage[i][j] && isChecked[i+1][j-1] == 0){
       	isChecked[i+1][j-1] = 1;
-      	findIslands(isChecked, i+1, j-1);
+      	findIslands(isChecked, i+1, j-1, firstImage);
    	}
 
 	return 0;
@@ -145,7 +126,10 @@ vector<vector<int>>& FeatureExtractor::getFeatureTestingSet(){
 vector<int>& FeatureExtractor::getLabelTrainingSet(){
     return labelTrainingSet;
 }
-void FeatureExtractor::padImage(){
+vector<int>& FeatureExtractor::getLabelTestingSet(){
+    return labelTestingSet;
+}
+void FeatureExtractor::padImage(vector<vector<int>>& firstImage){
     vector<int> zeros(firstImage.size(), 0);
     firstImage.emplace(firstImage.begin(), zeros);
     firstImage.push_back(zeros);
@@ -153,95 +137,4 @@ void FeatureExtractor::padImage(){
         firstImage[i].emplace(firstImage[i].begin(), 0);
         firstImage[i].push_back(0);
     }
-}
-int FeatureExtractor::countTurn(int i, int j)
-{
-	int q[8]={ firstImage[i-1][j], firstImage[i-1][j+1],firstImage[i][j+1], firstImage[i+1][j+1],
-		       firstImage[i+1][j], firstImage[i+1][j-1],firstImage[i][j-1], firstImage[i-1][j-1]};
-
-	int turn=0;
-
-	for( int t=0; t < 8; t++){
-	    if (t<7) {
-            if( q[t] == 0 && q[t+1] != 0){
-                turn++;
-            }
-	    }
-		else {
-            if(( q[7] == 0 && q[0] != 0)){
-                turn++;
-            }
-        }
-	}
-	return turn;
-}
-int FeatureExtractor::countOne(int i, int j){
-	int count1=0;
-	if( firstImage[i][j+1] != 0)		count1++;
-	if( firstImage[i+1][j+1] != 0)	    count1++;
-	if( firstImage[i+1][j] != 0)		count1++;
-	if( firstImage[i+1][j-1] != 0)	    count1++;
-	if( firstImage[i][j-1] != 0)		count1++;
-	if( firstImage[i-1][j-1] != 0)	    count1++;
-	if( firstImage[i-1][j] != 0)		count1++;
-	if( firstImage[i-1][j+1] != 0)	    count1++;
-	return count1;
-}
-
-void FeatureExtractor::thinImage(){
-    bool isChanged= true;
-    vector<vector<bool>> isMarked;
-    size_t imageSize = firstImage.size();
-	for(unsigned int i=0; i < imageSize; i++)
-		isMarked.push_back(vector<bool>(imageSize, false));
-
-	while( isChanged == true)
-	{
-		isChanged = false;
-		for(unsigned int i=1; i < imageSize-1; i++){
-			for(unsigned int j=1; j < imageSize-1; j++){
-				if( ( firstImage[i][j] != 0
-					&& (1 < countOne(i, j) && countOne(i, j) < 7)
-					&& countTurn(i, j)==1)
-					&& (firstImage[i-1][j] *  firstImage[i][j+1] * firstImage[i+1][j] == 0)
-					&& (firstImage[i][j+1] * firstImage[i+1][j] * firstImage[i][j-1] == 0)){
-
-					isMarked[i][j] = true;
-					isChanged = true;
-				}
-			}
-		}
-
-		for(unsigned int i=0; i < imageSize; i++){
-			for(unsigned int j=0; j < imageSize; j++){
-				if( isMarked[i][j]){
-					firstImage[i][j] = 0;
-					isMarked[i][j] = false;
-				}
-			}
-		}
-
-		for( int i=imageSize-2; i >= 1; i--){
-			for( int j=imageSize-2; j >= 1; j--){
-				if( firstImage[i][j] == 1
-					&& (1 < countOne(i, j) && countOne(i, j) < 7)
-					&& countTurn(i, j) != 0
-					&& (firstImage[i-1][j] * firstImage[i][j+1] * firstImage[i][j-1] == 0)
-					&& (firstImage[i-1][j] * firstImage[i+1][j] * firstImage[i][j-1] == 0)){
-
-						isMarked[i][j] = true;
-						isChanged = true;
-				}
-			}
-		}
-
-		for( int i=imageSize-1; i >= 0; i--){
-			for( int j=imageSize-1; j >= 0; j--){
-				if( isMarked[i][j]){
-					firstImage[i][j] = 0;
-					isMarked[i][j] = false;
-				}
-			}
-		}
-	}
 }
